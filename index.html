@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Team Retro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library-for-js/2.38.2/msal-browser.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f2f9;min-height:100vh;padding:32px 16px}
+.wrap{max-width:620px;margin:0 auto}
+.header{background:linear-gradient(135deg,#7c5cbf,#4a3275);border-radius:16px;padding:22px 26px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{color:#fff;font-weight:800;font-size:1.15rem}
+.header p{color:rgba(255,255,255,0.6);font-size:0.76rem;margin-top:2px}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}
+.gbtn{background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:0.76rem;font-weight:600;cursor:pointer}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(100,70,180,0.07);padding:20px 22px;margin-bottom:14px}
+.entry{background:#f4f2f9;border:1px solid #ddd6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px}
+.entry .ename{font-size:0.71rem;font-weight:700;color:#7c5cbf;margin-bottom:4px}
+.entry .etext{font-size:0.84rem;color:#2d1f4e;line-height:1.5}
+label.fl{display:block;font-size:0.78rem;font-weight:600;color:#2d1f4e;margin-bottom:6px}
+input[type=text],textarea{width:100%;padding:10px 12px;border:1px solid #ddd6f0;border-radius:8px;font-size:0.85rem;color:#2d1f4e;background:#f4f2f9;font-family:inherit;outline:none}
+input[type=text]:focus,textarea:focus{border-color:#7c5cbf;box-shadow:0 0 0 3px rgba(124,92,191,0.1)}
+textarea{resize:vertical}
+.pbtn{width:100%;padding:11px;background:linear-gradient(135deg,#7c5cbf,#4a3275);color:#fff;border:none;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer}
+.pbtn:disabled{opacity:0.45;cursor:not-allowed}
+.sbtn{width:100%;padding:11px;background:#fff;color:#7c5cbf;border:2px solid #ddd6f0;border-radius:10px;font-size:0.88rem;font-weight:700;cursor:pointer}
+.bbtn{background:none;border:none;color:#7c5cbf;font-size:0.82rem;font-weight:600;cursor:pointer;padding:0;margin-bottom:16px;display:block}
+.pill{padding:5px 13px;border-radius:20px;font-size:0.78rem;font-weight:600;display:inline-block;margin:3px}
+.chip-sel{padding:7px 14px;border-radius:8px;border:2px solid #ddd6f0;background:#fff;color:#2d1f4e;font-weight:600;font-size:0.83rem;cursor:pointer;margin:3px}
+.chip-sel.active{border-color:#7c5cbf;background:#ede8f7;color:#7c5cbf}
+.divider{height:1px;background:#ddd6f0;margin:18px 0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sec-title{font-size:0.75rem;font-weight:700;color:#8b7ab0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+/* Timer */
+.timer-bar{background:#ede8f7;border:1px solid #ddd6f0;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.timer-bar.urgent{background:#fff0f0;border-color:#f87171}
+.timer-track{flex:1}
+.timer-row{display:flex;justify-content:space-between;margin-bottom:5px}
+.timer-label{font-size:0.72rem;font-weight:700;color:#8b7ab0;text-transform:uppercase;letter-spacing:0.5px}
+.timer-label.urgent{color:#c0392b}
+.timer-val{font-size:0.85rem;font-weight:800;color:#7c5cbf;font-variant-numeric:tabular-nums}
+.timer-val.urgent{color:#c0392b}
+.timer-prog{height:5px;background:#ddd6f0;border-radius:99px;overflow:hidden}
+.timer-fill{height:100%;background:#7c5cbf;border-radius:99px;transition:width 1s linear}
+.timer-fill.urgent{background:#e74c3c}
+.tbtn{padding:5px 12px;background:linear-gradient(135deg,#7c5cbf,#4a3275);color:#fff;border:none;border-radius:7px;font-weight:700;font-size:0.78rem;cursor:pointer}
+.trst{padding:5px 10px;background:#fff;color:#7c5cbf;border:1.5px solid #ddd6f0;border-radius:7px;font-weight:700;font-size:0.78rem;cursor:pointer}
+/* Wheel */
+.modal-bg{position:fixed;inset:0;background:rgba(44,26,80,0.55);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:#fff;border-radius:20px;padding:28px 32px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);text-align:center}
+/* Auth */
+.auth-box{text-align:center;padding:40px 28px}
+.loading{text-align:center;padding:60px;color:#8b7ab0;font-size:0.9rem}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">Loading…</div></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────
+const CLIENT_ID   = "54cfc71f-34d3-42ba-a9e1-9cd9839dec9d";
+const TENANT_ID   = "ed97c509-c38d-4c4c-bfbc-8871ed133cec";
+const DRIVE_ITEM  = "DAB86772-446B-4A30-A60E-55B35A979AE9"; // from sourcedoc in URL
+const TEAM        = ["Chris","Chi","Max","Mihai","Ed"];
+const SECTIONS    = [
+  {key:"working", label:"✅ What's working well",       ph:"Share what's going well…"},
+  {key:"notwork", label:"❌ What's not working",         ph:"Share blockers or frustrations…"},
+  {key:"improve", label:"💡 What can we do to improve", ph:"Share ideas or suggestions…"},
+];
+const TIMER_SECS  = 300;
+const GRAPH       = "https://graph.microsoft.com/v1.0";
+const SCOPES      = ["Files.ReadWrite","User.Read"];
+
+// ── MSAL ────────────────────────────────────────────────────────────────
+const msal = new msal.PublicClientApplication({
+  auth:{ clientId:CLIENT_ID, authority:`https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: window.location.href.split("?")[0] },
+  cache:{ cacheLocation:"sessionStorage" }
+});
+
+// ── STATE ───────────────────────────────────────────────────────────────
+let state = { account:null, sessions:[], currentId:null, view:"home", submitter:"", form:{working:"",notwork:"",improve:""}, submitted:false, saving:false, wheelRemaining:[...TEAM], showWheel:false };
+
+// ── AUTH ─────────────────────────────────────────────────────────────────
+async function getToken() {
+  const req = { scopes:SCOPES, account:state.account };
+  try { const r = await msal.acquireTokenSilent(req); return r.accessToken; }
+  catch { const r = await msal.acquireTokenPopup(req); return r.accessToken; }
+}
+
+// ── GRAPH HELPERS ────────────────────────────────────────────────────────
+async function graphGet(path) {
+  const t = await getToken();
+  const r = await fetch(`${GRAPH}${path}`,{headers:{Authorization:`Bearer ${t}`}});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function graphPatch(path, body) {
+  const t = await getToken();
+  const r = await fetch(`${GRAPH}${path}`,{method:"PATCH",headers:{Authorization:`Bearer ${t}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function graphPost(path, body) {
+  const t = await getToken();
+  const r = await fetch(`${GRAPH}${path}`,{method:"POST",headers:{Authorization:`Bearer ${t}`,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── EXCEL HELPERS ─────────────────────────────────────────────────────────
+const BASE = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
+
+async function readSheet(sheet) {
+  const d = await graphGet(`${BASE}('${sheet}')/usedRange`);
+  const rows = d.values || [];
+  if(rows.length < 2) return [];
+  const headers = rows[0];
+  return rows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = row[i] ?? "");
+    return obj;
+  });
+}
+
+async function appendRow(sheet, values) {
+  // Find next empty row
+  let used;
+  try { used = await graphGet(`${BASE}('${sheet}')/usedRange`); } catch { used = {rowCount:1}; }
+  const nextRow = (used.rowCount || 1) + 1;
+  const cols = values.length;
+  const endCol = String.fromCharCode(64 + cols);
+  await graphPatch(`${BASE}('${sheet}')/range(address='A${nextRow}:${endCol}${nextRow}')`, { values:[values] });
+}
+
+async function loadData() {
+  const [sessions, submissions] = await Promise.all([readSheet("Sessions"), readSheet("Submissions")]);
+  state.sessions = sessions.map(s => ({
+    ...s,
+    submissions: submissions.filter(sub => sub.sessionId === s.id)
+  }));
+  if(!state.currentId && state.sessions.length) state.currentId = state.sessions[0].id;
+}
+
+async function startNewRetro() {
+  const id = genId(), createdAt = Date.now(), label = fmtDate(createdAt);
+  await appendRow("Sessions", [id, createdAt, label]);
+  state.currentId = id;
+  state.wheelRemaining = [...TEAM];
+  await loadData();
+}
+
+async function submitRetro() {
+  const {submitter, form, currentId} = state;
+  await appendRow("Submissions", [genId(), currentId, submitter, form.working, form.notwork, form.improve, Date.now()]);
+  await loadData();
+  state.submitted = true;
+}
+
+// ── UTILS ────────────────────────────────────────────────────────────────
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function fmtDate(ts){ return new Date(ts).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); }
+function fmtTime(s){ return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; }
+function currentSession(){ return state.sessions.find(s=>s.id===state.currentId)||null; }
+
+// ── TIMERS ───────────────────────────────────────────────────────────────
+const timers = {};
+function getTimer(id, autoStart=false) {
+  if(!timers[id]) timers[id] = {secs:TIMER_SECS, running:autoStart, interval:null};
+  return timers[id];
+}
+function startTimer(id) {
+  const t = getTimer(id);
+  if(t.running || t.secs<=0) return;
+  t.running = true;
+  t.interval = setInterval(()=>{ t.secs--; if(t.secs<=0){t.secs=0;stopTimer(id);} render(); },1000);
+}
+function stopTimer(id) {
+  const t = getTimer(id);
+  t.running = false;
+  clearInterval(t.interval);
+}
+function resetTimer(id) { stopTimer(id); timers[id]={secs:TIMER_SECS,running:false,interval:null}; }
+function timerHTML(id, autoStart=false) {
+  const t = getTimer(id, autoStart);
+  if(autoStart && !t.running && t.secs>0 && !t._started) { t._started=true; startTimer(id); }
+  const pct=(t.secs/TIMER_SECS)*100, urg=t.secs<=60;
+  return `<div class="timer-bar${urg?" urgent":""}">
+    <div class="timer-track">
+      <div class="timer-row">
+        <span class="timer-label${urg?" urgent":""}">${urg?"⏱ Time almost up!":"⏱ Timer"}</span>
+        <span class="timer-val${urg?" urgent":""}">${fmtTime(t.secs)}</span>
+      </div>
+      <div class="timer-prog"><div class="timer-fill${urg?" urgent":""}" style="width:${pct}%"></div></div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="tbtn" onclick="toggleTimer('${id}')">${t.running?"⏸":"▶"}</button>
+      <button class="trst" onclick="resetTimerAndRender('${id}')">↺</button>
+    </div>
+  </div>`;
+}
+function toggleTimer(id){ const t=timers[id]; if(t&&t.running) stopTimer(id); else startTimer(id); render(); }
+function resetTimerAndRender(id){ resetTimer(id); render(); }
+
+// ── WHEEL ────────────────────────────────────────────────────────────────
+let wheelAngle=0, wheelWinner=null, wheelSpinning=false;
+function openWheel(){ state.showWheel=true; wheelWinner=null; render(); drawWheel(); }
+function closeWheel(){ state.showWheel=false; render(); }
+function removeAndSpin(name){ state.wheelRemaining=state.wheelRemaining.filter(n=>n!==name); wheelWinner=null; render(); drawWheel(); spinWheel(); }
+
+function drawWheel(){
+  const canvas=document.getElementById("wcanvas");
+  if(!canvas) return;
+  const ctx=canvas.getContext("2d"), cx=130, cy=130, r=120;
+  const names=state.wheelRemaining;
+  const colors=["#c4aef0","#a98de0","#9070d0","#7c5cbf","#5e3fa0","#b49dda"];
+  ctx.clearRect(0,0,260,260);
+  if(!names.length){
+    ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.fillStyle="#ede8f7";ctx.fill();
+    ctx.fillStyle="#8b7ab0";ctx.font="bold 13px system-ui";ctx.textAlign="center";ctx.fillText("Everyone's gone!",cx,cy);
+    return;
+  }
+  const sa=(2*Math.PI)/names.length;
+  names.forEach((name,i)=>{
+    const s=wheelAngle+i*sa, e=s+sa;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,s,e);ctx.closePath();
+    ctx.fillStyle=colors[i%colors.length];ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(s+sa/2);
+    ctx.textAlign="right";ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";
+    ctx.fillText(name,r-14,5);ctx.restore();
+  });
+  ctx.beginPath();ctx.arc(cx,cy,18,0,2*Math.PI);ctx.fillStyle="#4a3275";ctx.fill();ctx.strokeStyle="#fff";ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+r+8,cy);ctx.lineTo(cx+r-12,cy-10);ctx.lineTo(cx+r-12,cy+10);ctx.closePath();ctx.fillStyle="#4a3275";ctx.fill();
+}
+
+function spinWheel(){
+  if(wheelSpinning||!state.wheelRemaining.length) return;
+  wheelSpinning=true; wheelWinner=null; render(); drawWheel();
+  const names=state.wheelRemaining;
+  const duration=5000, extra=(6+Math.random()*4)*2*Math.PI;
+  const target=wheelAngle+extra, start=performance.now(), startAngle=wheelAngle;
+  function step(now){
+    const elapsed=now-start, progress=Math.min(elapsed/duration,1);
+    const ease=1-Math.pow(1-progress,4);
+    wheelAngle=startAngle+(target-startAngle)*ease;
+    drawWheel();
+    if(progress<1){ requestAnimationFrame(step); }
+    else{
+      wheelSpinning=false;
+      const sa=(2*Math.PI)/names.length;
+      const norm=((wheelAngle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+      wheelWinner=names[Math.floor(((2*Math.PI-norm)%(2*Math.PI))/sa)%names.length];
+      render(); drawWheel();
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function render(){
+  const app=document.getElementById("app");
+  const session=currentSession();
+  const submittedNames=session?.submissions.map(s=>s.name)||[];
+  const pending=TEAM.filter(n=>!submittedNames.includes(n));
+  let html="";
+
+  // Header
+  html+=`<div class="header">
+    <div><h1>🔁 Team Retro</h1><p>${session?`Current retro · Started ${fmtDate(session.createdAt)}`:"No active retro"}</p></div>
+    <div class="hbtns">
+      <button class="gbtn" onclick="openWheel()">🎡 Round Robin</button>
+      ${state.sessions.length>1?`<button class="gbtn" onclick="setView('${state.view==="history"?"home":"history"}')">${state.view==="history"?"← Back":"📁 History"}</button>`:""}
+      <button class="gbtn" onclick="newRetro()">+ New Retro</button>
+      <button class="gbtn" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>`;
+
+  // Wheel modal
+  if(state.showWheel){
+    html+=`<div class="modal-bg">
+      <div class="modal">
+        <div style="font-weight:800;font-size:1.1rem;color:#2d1f4e;margin-bottom:4px">🎡 Round Robin</div>
+        <div style="font-size:0.78rem;color:#8b7ab0;margin-bottom:12px">${state.wheelRemaining.length?`${state.wheelRemaining.length} name${state.wheelRemaining.length>1?"s":""} remaining`:"Everyone's been picked!"}</div>
+        <canvas id="wcanvas" width="260" height="260" style="display:block;margin:0 auto"></canvas>
+        ${wheelWinner?`<div style="margin-top:14px;background:#ede8f7;border:1px solid #ddd6f0;border-radius:10px;padding:10px 16px">
+          <div style="font-size:0.75rem;color:#8b7ab0;font-weight:600">🎉 Selected</div>
+          <div style="font-size:1.3rem;font-weight:800;color:#7c5cbf;margin-top:2px">${wheelWinner}</div>
+        </div>`:""}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+          ${wheelWinner&&state.wheelRemaining.length?`<button class="pbtn" style="background:linear-gradient(135deg,#1a6b4a,#0d4a30)" onclick="removeAndSpin('${wheelWinner}')">✓ Remove ${wheelWinner} &amp; spin again</button>`:""}
+          <button class="pbtn" onclick="spinWheel()" ${wheelSpinning||!state.wheelRemaining.length?"disabled":""}>${wheelSpinning?"Spinning…":wheelWinner?"Spin Without Removing":"Spin!"}</button>
+          <button class="sbtn" onclick="closeWheel()">Close</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // HISTORY
+  if(state.view==="history"){
+    const past=state.sessions.filter(s=>s.id!==state.currentId);
+    if(!past.length){ html+=`<div class="card" style="text-align:center;color:#8b7ab0;padding:40px">No past retros yet.</div>`; }
+    past.forEach(s=>{
+      html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-weight:700;color:#2d1f4e">Retro — ${fmtDate(s.createdAt)}</div>
+        <div style="font-size:0.75rem;color:#8b7ab0">${s.submissions.length}/${TEAM.length} submitted</div>
+      </div>`;
+      SECTIONS.forEach(sec=>{
+        const entries=s.submissions.filter(sub=>sub[sec.key]);
+        if(!entries.length) return;
+        html+=`<div style="margin-bottom:14px"><div class="sec-title">${sec.label}</div>`;
+        entries.forEach(e=>{ html+=`<div class="entry"><div class="ename">${e.name}</div><div class="etext">${e[sec.key]}</div></div>`; });
+        html+=`</div>`;
+      });
+      html+=`</div>`;
+    });
+  }
+
+  // HOME — no session
+  if(state.view==="home"&&!session){
+    html+=`<div class="card auth-box">
+      <div style="font-size:2.5rem;margin-bottom:12px">🚀</div>
+      <div style="font-weight:700;font-size:1rem;color:#2d1f4e;margin-bottom:6px">No active retro</div>
+      <div style="font-size:0.83rem;color:#8b7ab0;margin-bottom:20px">Start a new retro session to get going.</div>
+      <button class="pbtn" onclick="newRetro()">Start New Retro</button>
+    </div>`;
+  }
+
+  // HOME — active
+  if(state.view==="home"&&session){
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;color:#2d1f4e">Submissions</div>
+        <div style="font-size:0.78rem;color:#8b7ab0">${submittedNames.length} of ${TEAM.length}</div>
+      </div>
+      <div>${TEAM.map(n=>`<span class="pill" style="background:${submittedNames.includes(n)?"#d4f0e8":"#ede8f7"};color:${submittedNames.includes(n)?"#1a6b4a":"#8b7ab0"}">${submittedNames.includes(n)?"✓ ":""}${n}</span>`).join("")}</div>
+      ${pending.length?`<div style="margin-top:10px;font-size:0.74rem;color:#8b7ab0">Still waiting on: ${pending.join(", ")}</div>`:""}
+    </div>
+    <div class="grid2">
+      <button class="pbtn" onclick="setView('submit')">✏️ Submit My Retro</button>
+      <button class="sbtn" onclick="setView('review')">👁️ View Results</button>
+    </div>`;
+  }
+
+  // SUBMIT
+  if(state.view==="submit"){
+    html+=`<div class="card"><button class="bbtn" onclick="setView('home')">← Back</button>`;
+    if(!state.submitted){
+      html+=`<div style="font-weight:700;font-size:1rem;color:#2d1f4e;margin-bottom:16px">Submit Your Retro</div>`;
+      html+=timerHTML("submit-timer", true);
+      html+=`<div style="margin-bottom:16px"><label class="fl">Your name</label><div>`;
+      TEAM.filter(n=>!submittedNames.includes(n)).forEach(n=>{
+        html+=`<button class="chip-sel${state.submitter===n?" active":""}" onclick="setSubmitter('${n}')">${n}</button>`;
+      });
+      if(!pending.length) html+=`<span style="font-size:0.83rem;color:#8b7ab0">Everyone has submitted!</span>`;
+      html+=`</div></div>`;
+      SECTIONS.forEach(sec=>{
+        html+=`<div style="margin-bottom:16px"><label class="fl">${sec.label}</label>
+          <textarea rows="3" placeholder="${sec.ph}" oninput="setForm('${sec.key}',this.value)">${state.form[sec.key]}</textarea></div>`;
+      });
+      const disabled=state.saving||!state.submitter||!state.form.working||!state.form.notwork||!state.form.improve;
+      html+=`<button class="pbtn" onclick="doSubmit()" ${disabled?"disabled":""}>${state.saving?"Saving…":"Submit"}</button>`;
+    } else {
+      html+=`<div style="text-align:center;padding:32px 0">
+        <div style="font-size:2.5rem;margin-bottom:12px">🎉</div>
+        <div style="font-weight:700;color:#2d1f4e;margin-bottom:6px">Thanks, ${state.submitter}!</div>
+        <div style="font-size:0.84rem;color:#8b7ab0;margin-bottom:20px">Your retro has been submitted.</div>
+        <button class="pbtn" onclick="setView('home')">Back to Home</button>
+      </div>`;
+    }
+    html+=`</div>`;
+  }
+
+  // REVIEW
+  if(state.view==="review"){
+    html+=`<button class="bbtn" style="margin-bottom:14px" onclick="setView('home')">← Back</button>`;
+    if(!session?.submissions.length){
+      html+=`<div class="card" style="text-align:center;color:#8b7ab0;padding:40px">No submissions yet.</div>`;
+    } else {
+      SECTIONS.forEach(sec=>{
+        html+=`<div class="card"><div style="font-weight:700;color:#2d1f4e;margin-bottom:12px">${sec.label}</div>`;
+        html+=timerHTML("review-"+sec.key);
+        session.submissions.filter(s=>s[sec.key]).forEach(s=>{
+          html+=`<div class="entry"><div class="ename">${s.name}</div><div class="etext">${s[sec.key]}</div></div>`;
+        });
+        html+=`</div>`;
+      });
+    }
+  }
+
+  app.innerHTML=html;
+
+  // Draw wheel after render
+  if(state.showWheel) setTimeout(drawWheel, 0);
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────
+function setView(v){ state.view=v; if(v==="submit"){ state.submitted=false; state.submitter=""; state.form={working:"",notwork:"",improve:""}; } render(); }
+function setSubmitter(n){ state.submitter=n; render(); }
+function setForm(key,val){ state.form[key]=val; }
+
+async function newRetro(){
+  showLoading();
+  await startNewRetro();
+  state.view="home";
+  render();
+}
+
+async function doSubmit(){
+  if(!state.submitter||!state.form.working||!state.form.notwork||!state.form.improve) return;
+  state.saving=true; render();
+  await submitRetro();
+  state.saving=false; render();
+}
+
+function showLoading(){ document.getElementById("app").innerHTML=`<div class="loading">Saving…</div>`; }
+
+async function signOut(){
+  await msal.logoutPopup();
+  state.account=null; state.sessions=[]; state.currentId=null;
+  renderAuth();
+}
+
+// ── AUTH FLOW ─────────────────────────────────────────────────────────────
+function renderAuth(){
+  document.getElementById("app").innerHTML=`
+    <div class="header"><div><h1>🔁 Team Retro</h1><p>Splend</p></div></div>
+    <div class="card auth-box">
+      <div style="font-size:2.5rem;margin-bottom:12px">👋</div>
+      <div style="font-weight:700;font-size:1rem;color:#2d1f4e;margin-bottom:6px">Sign in to continue</div>
+      <div style="font-size:0.83rem;color:#8b7ab0;margin-bottom:20px">Use your Splend Microsoft 365 account</div>
+      <button class="pbtn" onclick="signIn()">Sign in with Microsoft</button>
+    </div>`;
+}
+
+async function signIn(){
+  try {
+    const r = await msal.loginPopup({scopes:SCOPES});
+    state.account = r.account;
+    await init();
+  } catch(e){ alert("Sign in failed: "+e.message); }
+}
+
+async function init(){
+  document.getElementById("app").innerHTML=`<div class="loading">Loading retro data…</div>`;
+  try {
+    await loadData();
+    if(state.sessions.length) state.currentId=state.sessions[0].id;
+    render();
+  } catch(e){
+    document.getElementById("app").innerHTML=`<div class="card auth-box"><div style="color:#c0392b;font-weight:600">Error loading data: ${e.message}</div><br><button class="pbtn" onclick="init()">Retry</button></div>`;
+  }
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+(async()=>{
+  await msal.initialize();
+  try { await msal.handleRedirectPromise(); } catch{}
+  const accounts = msal.getAllAccounts();
+  if(accounts.length){
+    state.account = accounts[0];
+    await init();
+  } else {
+    renderAuth();
+  }
+})();
+</script>
+</body>
+</html>
