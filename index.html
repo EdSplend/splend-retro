@@ -103,21 +103,43 @@ async function gPatch(path,body) {
   return r.json();
 }
 
-const BASE = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
+const BASE = `/drives/root:/retro-data.xlsx:/workbook/worksheets`;
 
-async function readSheet(sheet) {
-  const d = await gGet(`${BASE}('${sheet}')/usedRange`);
-  const rows = d.values||[];
-  if(rows.length<2) return [];
+async function loadData() {
+  const siteResp = await gGet(`/sites/splendgroup.sharepoint.com:/`);
+  const siteId = siteResp.id;
+  const driveResp = await gGet(`/sites/${siteId}/drive/root:/retro-data.xlsx`);
+  const fileId = driveResp.id;
+  const sheetBase = `/drives/${driveResp.parentReference.driveId}/items/${fileId}/workbook/worksheets`;
+  const [sessions, submissions] = await Promise.all([
+    readSheetByBase(sheetBase, "Sessions"),
+    readSheetByBase(sheetBase, "Submissions")
+  ]);
+  state.sessions = sessions.map(s => ({...s, submissions: submissions.filter(sub => sub.sessionId === s.id)}));
+  if(state.sessions.length && !state.currentId) state.currentId = state.sessions[0].id;
+  state._sheetBase = sheetBase;
+  state._driveId = driveResp.parentReference.driveId;
+  state._fileId = fileId;
+}
+
+async function readSheetByBase(base, sheet) {
+  const d = await gGet(`${base}('${sheet}')/usedRange`);
+  const rows = d.values || [];
+  if(rows.length < 2) return [];
   const headers = rows[0];
   return rows.slice(1).map(row => { const o={}; headers.forEach((h,i)=>o[h]=row[i]??""); return o; });
 }
 
+async function readSheet(sheet) {
+  return readSheetByBase(state._sheetBase, sheet);
+}
+
 async function appendRow(sheet, values) {
-  let used; try{ used=await gGet(`${BASE}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
+  const base = state._sheetBase;
+  let used; try{ used=await gGet(`${base}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
   const next=(used.rowCount||1)+1;
   const endCol=String.fromCharCode(64+values.length);
-  await gPatch(`${BASE}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
+  await gPatch(`${base}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
 }
 
 async function loadData() {
