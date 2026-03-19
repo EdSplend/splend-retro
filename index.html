@@ -130,7 +130,8 @@ async function readSheetByBase(base, sheet) {
 }
 
 async function readSheet(sheet) {
-  return readSheetByBase(state._sheetBase, sheet);
+  const base = await resolveSheetBase();
+  return readSheetByBase(base, sheet);
 }
 
 async function appendRow(sheet, values) {
