@@ -54,7 +54,7 @@ textarea{resize:vertical}
 <script>
 const CLIENT_ID  = "54cfc71f-34d3-42ba-a9e1-9cd9839dec9d";
 const TENANT_ID  = "ed97c509-c38d-4c4c-bfbc-8871ed133cec";
-const DRIVE_ITEM = "659DD292-B2B7-4090-B8B5-A3512F42B050";
+const DRIVE_ITEM = "13F8506C-D3EE-4958-8426-43A50976C2F4";
 const TEAM       = ["Chris","Chi","Max","Mihai","Ed"];
 const SECTIONS   = [
   {key:"working",label:"✅ What's working well",      ph:"Share what's going well…"},
@@ -107,12 +107,7 @@ const BASE = `/drives/root:/retro-data.xlsx:/workbook/worksheets`;
 
 async function resolveSheetBase() {
   if(state._sheetBase) return state._sheetBase;
-  const siteResp = await gGet(`/sites/splendgroup.sharepoint.com:/`);
-  const siteId = siteResp.id;
-  const driveResp = await gGet(`/sites/${siteId}/drive/root:/retro-data.xlsx`);
-  const driveId = driveResp.parentReference.driveId;
-  const fileId = driveResp.id;
-  state._sheetBase = `/drives/${driveId}/items/${fileId}/workbook/worksheets`;
+  state._sheetBase = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
   return state._sheetBase;
 }
 
