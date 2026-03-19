@@ -109,10 +109,10 @@ async function gPatch(path,body) {
   return r.json();
 }
 
-const SHEET_BASE = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
+function sheetBase(){ return `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`; }
 
 async function readSheet(sheet) {
-  const d = await gGet(`${SHEET_BASE}('${sheet}')/usedRange`);
+  const d = await gGet(`${sheetBase()}('${sheet}')/usedRange`);
   const rows = d.values||[];
   if(rows.length<2) return [];
   const headers = rows[0];
@@ -120,10 +120,10 @@ async function readSheet(sheet) {
 }
 
 async function appendRow(sheet, values) {
-  let used; try{ used=await gGet(`${SHEET_BASE}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
+  let used; try{ used=await gGet(`${sheetBase()}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
   const next=(used.rowCount||1)+1;
   const endCol=String.fromCharCode(64+values.length);
-  await gPatch(`${SHEET_BASE}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
+  await gPatch(`${sheetBase()}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
 }
 
 async function loadData() {
