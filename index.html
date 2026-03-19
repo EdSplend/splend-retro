@@ -103,43 +103,27 @@ async function gPatch(path,body) {
   return r.json();
 }
 
-const BASE = `/drives/root:/retro-data.xlsx:/workbook/worksheets`;
+const SHEET_BASE = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
 
-async function resolveSheetBase() {
-  if(state._sheetBase) return state._sheetBase;
-  state._sheetBase = `/me/drive/items/${DRIVE_ITEM}/workbook/worksheets`;
-  return state._sheetBase;
-}
-
-async function loadData() {
-  const base = await resolveSheetBase();
-  const [sessions, submissions] = await Promise.all([
-    readSheetByBase(base, "Sessions"),
-    readSheetByBase(base, "Submissions")
-  ]);
-  state.sessions = sessions.map(s => ({...s, submissions: submissions.filter(sub => sub.sessionId === s.id)}));
-  if(state.sessions.length && !state.currentId) state.currentId = state.sessions[0].id;
-}
-
-async function readSheetByBase(base, sheet) {
-  const d = await gGet(`${base}('${sheet}')/usedRange`);
-  const rows = d.values || [];
-  if(rows.length < 2) return [];
+async function readSheet(sheet) {
+  const d = await gGet(`${SHEET_BASE}('${sheet}')/usedRange`);
+  const rows = d.values||[];
+  if(rows.length<2) return [];
   const headers = rows[0];
   return rows.slice(1).map(row => { const o={}; headers.forEach((h,i)=>o[h]=row[i]??""); return o; });
 }
 
-async function readSheet(sheet) {
-  const base = await resolveSheetBase();
-  return readSheetByBase(base, sheet);
-}
-
 async function appendRow(sheet, values) {
-  const base = await resolveSheetBase();
-  let used; try{ used=await gGet(`${base}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
+  let used; try{ used=await gGet(`${SHEET_BASE}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
   const next=(used.rowCount||1)+1;
   const endCol=String.fromCharCode(64+values.length);
-  await gPatch(`${base}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
+  await gPatch(`${SHEET_BASE}('${sheet}')/range(address='A${next}:${endCol}${next}')`,{values:[values]});
+}
+
+async function loadData() {
+  const [sessions, submissions] = await Promise.all([readSheet("Sessions"), readSheet("Submissions")]);
+  state.sessions = sessions.map(s => ({...s, submissions: submissions.filter(sub => sub.sessionId === s.id)}));
+  if(state.sessions.length && !state.currentId) state.currentId = state.sessions[0].id;
 }
 
 async function loadData() {
