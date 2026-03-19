@@ -105,21 +105,25 @@ async function gPatch(path,body) {
 
 const BASE = `/drives/root:/retro-data.xlsx:/workbook/worksheets`;
 
-async function loadData() {
+async function resolveSheetBase() {
+  if(state._sheetBase) return state._sheetBase;
   const siteResp = await gGet(`/sites/splendgroup.sharepoint.com:/`);
   const siteId = siteResp.id;
   const driveResp = await gGet(`/sites/${siteId}/drive/root:/retro-data.xlsx`);
+  const driveId = driveResp.parentReference.driveId;
   const fileId = driveResp.id;
-  const sheetBase = `/drives/${driveResp.parentReference.driveId}/items/${fileId}/workbook/worksheets`;
+  state._sheetBase = `/drives/${driveId}/items/${fileId}/workbook/worksheets`;
+  return state._sheetBase;
+}
+
+async function loadData() {
+  const base = await resolveSheetBase();
   const [sessions, submissions] = await Promise.all([
-    readSheetByBase(sheetBase, "Sessions"),
-    readSheetByBase(sheetBase, "Submissions")
+    readSheetByBase(base, "Sessions"),
+    readSheetByBase(base, "Submissions")
   ]);
   state.sessions = sessions.map(s => ({...s, submissions: submissions.filter(sub => sub.sessionId === s.id)}));
   if(state.sessions.length && !state.currentId) state.currentId = state.sessions[0].id;
-  state._sheetBase = sheetBase;
-  state._driveId = driveResp.parentReference.driveId;
-  state._fileId = fileId;
 }
 
 async function readSheetByBase(base, sheet) {
@@ -135,7 +139,7 @@ async function readSheet(sheet) {
 }
 
 async function appendRow(sheet, values) {
-  const base = state._sheetBase;
+  const base = await resolveSheetBase();
   let used; try{ used=await gGet(`${base}('${sheet}')/usedRange`); }catch{ used={rowCount:1}; }
   const next=(used.rowCount||1)+1;
   const endCol=String.fromCharCode(64+values.length);
