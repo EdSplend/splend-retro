@@ -400,7 +400,10 @@ async function init(){
 // ── BOOT ──────────────────────────────────────────────────────────────────
 (async()=>{
   await msalClient.initialize();
-  try{ await msalClient.handleRedirectPromise(); }catch{}
+  try{
+    const resp = await msalClient.handleRedirectPromise();
+    if(resp){ state.account=resp.account; await init(); return; }
+  }catch(e){ console.error(e); }
   const accounts=msalClient.getAllAccounts();
   if(accounts.length){ state.account=accounts[0]; await init(); }
   else renderAuth();
